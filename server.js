@@ -18,8 +18,23 @@ function getGroqUrl() {
 }
 
 async function getModel(needVision) {
-  if (needVision) return 'meta-llama/llama-4-scout-17b-16e-instruct';
-  return 'llama-3.3-70b-versatile';
+  try {
+    const r = await fetch(getGroqUrl() + '/models', { headers: { 'Authorization': 'Bearer ' + GROQ_API_KEY } });
+    const d = await r.json();
+    if (d && Array.isArray(d.data)) {
+      if (needVision) {
+        const v = d.data.find(m => m.id.includes('llama-4') || m.id.includes('vision'));
+        if (v) return v.id;
+      } else {
+        const prefs = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'llama-3.1-8b-instant'];
+        const found = prefs.find(p => d.data.some(m => m.id === p));
+        if (found) return found;
+        const anyChat = d.data.find(m => !m.id.includes('whisper') && !m.id.includes('guard'));
+        if (anyChat) return anyChat.id;
+      }
+    }
+  } catch (e) {}
+  return needVision ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'openai/gpt-oss-120b';
 }
 
 app.post('/api/chat', async (req, res) => {
