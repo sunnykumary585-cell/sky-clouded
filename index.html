@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SKY clouded</title>
+  <link rel="manifest" href="/manifest.json" />
+  <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }</script>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { margin: 0; background: #212121; color: #ececec; display: flex; height: 100vh; overflow: hidden; }
+    .side { width: 245px; background: #171717; padding: 12px; display: flex; flex-direction: column; border-right: 1px solid #2f2f2f; }
+    .btn-new { padding: 10px; background: #262626; color: #fff; border: 1px solid #444; border-radius: 8px; cursor: pointer; font-weight: bold; }
+    .hist { flex: 1; overflow-y: auto; margin-top: 12px; }
+    .h-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13.5px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .h-item:hover { background: #2a2a2a; color: #fff; }
+    .quota-box { margin-top: 10px; padding: 10px; background: #212121; border: 1px solid #333; border-radius: 8px; font-size: 12px; color: #cbd5e1; line-height: 1.55; }
+    .main { flex: 1; display: flex; flex-direction: column; }
+    .top { padding: 12px 20px; border-bottom: 1px solid #2f2f2f; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .pills { display: flex; gap: 6px; align-items: center; }
+    .pill { padding: 6px 12px; border-radius: 20px; border: 1px solid #444; background: #2a2a2a; color: #ccc; cursor: pointer; font-size: 12.5px; font-weight: bold; }
+    .pill.on { background: #10a37f; border-color: #10a37f; color: #fff; }
+    .pro-pill { border-color: #f59e0b; color: #fbbf24; }
+    .ad-strip { background: #18181b; border-bottom: 1px solid #2f2f2f; padding: 6px 14px; text-align: center; font-size: 12px; color: #94a3b8; }
+    .chat { flex: 1; overflow-y: auto; padding: 20px 14%; display: flex; flex-direction: column; gap: 14px; }
+    .msg { max-width: 82%; padding: 14px 18px; border-radius: 14px; line-height: 1.65; font-size: 15px; white-space: pre-wrap; }
+    .user { align-self: flex-end; background: #2f2f2f; color: #fff; }
+    .ai { align-self: flex-start; background: #171717; border: 1px solid #333; color: #ececec; }
+    .msg img { max-width: 100%; width: 320px; border-radius: 10px; display: block; margin-top: 6px; }
+    .pbar { display: none; padding: 8px 14%; background: #181818; border-top: 1px solid #333; align-items: center; gap: 10px; }
+    .pbar.show { display: flex; }
+    .pbar img { width: 46px; height: 46px; object-fit: cover; border-radius: 6px; border: 1px solid #10a37f; }
+    .chip { padding: 5px 11px; border-radius: 14px; border: 1px solid #444; background: #2a2a2a; color: #fff; font-size: 12px; cursor: pointer; }
+    .chip.on { background: #0284c7; border-color: #0284c7; }
+    .bar { padding: 12px 14% 18px; display: flex; gap: 8px; background: #212121; }
+    .tbtn { width: 40px; height: 40px; border-radius: 50%; border: none; background: #333; color: #fff; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    input[type="text"] { flex: 1; padding: 11px 16px; border-radius: 24px; border: 1px solid #444; background: #2f2f2f; color: #fff; font-size: 15px; outline: none; }
+    .send { padding: 0 20px; border-radius: 24px; border: none; background: #10a37f; color: #fff; font-weight: bold; cursor: pointer; font-size: 15px; }
+    .plan-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .plan-card { padding: 9px 6px; border-radius: 10px; border: 2px solid #334155; background: #0f172a; cursor: pointer; color: #cbd5e1; }
+    .plan-card.active { border-color: #10a37f; background: #064e3b; color: #fff; }
+    @media (max-width: 768px) { .side { display: none; } .chat, .bar, .pbar { padding-left: 12px; padding-right: 12px; } }
+  </style>
+</head>
+<body>
+  <div id="proModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:#1e293b; border:1px solid #10a37f; border-radius:16px; max-width:390px; width:100%; padding:20px; text-align:center; color:#fff;">
+      <h3 style="margin:0 0 6px; color:#34d399; font-size:20px;">👑 SKY clouded PRO</h3>
+      <p id="proReason" style="font-size:12.5px; color:#cbd5e1; margin:0 0 12px;">Daily Free Limit: 10 AI Questions & 2 AI Photos. Select a plan to pay directly:</p>
+
+      <!-- Step 1: Plan + Live QR Code + Direct UPI Pay -->
+      <div id="payBox1">
+        <div class="plan-grid">
+          <div class="plan-card active" id="pl1" onclick="pickPlan(49, '1 Month')">
+            <div style="font-size:12px; font-weight:bold;">1 Month</div>
+            <div style="font-size:17px; font-weight:bold; color:#34d399;">₹49</div>
+          </div>
+          <div class="plan-card" id="pl6" onclick="pickPlan(249, '6 Months')">
+            <div style="font-size:12px; font-weight:bold;">6 Months</div>
+            <div style="font-size:17px; font-weight:bold; color:#34d399;">₹249</div>
+          </div>
+          <div class="plan-card" id="pl12" onclick="pickPlan(449, '1 Year')">
+            <div style="font-size:12px; font-weight:bold;">1 Year</div>
+            <div style="font-size:17px; font-weight:bold; color:#34d399;">₹449</div>
+          </div>
+        </div>
+
+        <div style="background:#fff; padding:10px; border-radius:12px; display:inline-block; margin-bottom:10px;">
+          <img id="upiQrImg" src="" alt="Scan QR to Pay" style="width:165px; height:165px; display:block;" />
+          <div style="color:#0f172a; font-size:11px; font-weight:bold; margin-top:4px;">Scan with GPay / PhonePe / Paytm</div>
+        </div>
+
+        <button type="button" id="directPayBtn" onclick="openUpiApp()" style="width:100%; padding:11px; border:none; border-radius:10px; background:linear-gradient(90deg,#10a37f,#059669); color:#fff; font-size:15px; font-weight:bold; cursor:pointer; margin-bottom:8px;">📱 Pay ₹49 via UPI App</button>
+        <button type="button" onclick="showAfterPay()" style="width:100%; padding:9px; border:1px solid #38bdf8; border-radius:10px; background:#0f172a; color:#38bdf8; font-size:13px; font-weight:bold; cursor:pointer; margin-bottom:6px;">✅ Payment Done? Next Step →</button>
+      </div>
+
+      <!-- Step 2: Hidden until user completes payment -->
+      <div id="afterPayBox" style="display:none; background:#0f172a; padding:14px; border-radius:10px; margin-bottom:10px; border:1px dashed #38bdf8;">
+        <div style="font-size:13px; color:#fbbf24; font-weight:bold; margin-bottom:6px;">📲 Payment verify karne ke liye screenshot bhejein:</div>
+        <div style="font-size:12px; color:#94a3b8; margin-bottom:8px;">Paid to: <b style="color:#38bdf8;">sunnykumary585@okaxis</b></div>
+        <a id="waPayLink" href="#" target="_blank" style="display:inline-block; margin-bottom:10px; padding:8px 14px; background:#22c55e; color:#fff; border-radius:6px; text-decoration:none; font-size:12.5px; font-weight:bold;">📲 WhatsApp Screenshot Bhejein</a>
+        <input id="proCodeIn" placeholder="Enter VIP Code" style="width:100%; padding:9px; border-radius:8px; border:1px solid #475569; background:#1e293b; color:#fff; margin-bottom:8px; text-align:center;" />
+        <button type="button" onclick="unlockPro()" style="width:100%; padding:10px; border:none; border-radius:8px; background:#10a37f; color:#fff; font-weight:bold; cursor:pointer;">Unlock PRO</button>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+        <a href="#" onclick="showAfterPay(); return false;" style="font-size:12px; color:#94a3b8; text-decoration:underline;">Already have VIP code?</a>
+        <button type="button" onclick="closePro()" style="padding:6px 14px; border:none; border-radius:8px; background:#334155; color:#fff; font-size:12.5px; cursor:pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="side">
+    <button type="button" class="btn-new" onclick="newChat()">+ New Chat</button>
+    <div class="hist" id="hist"></div>
+    <div class="quota-box" id="quotaBox"></div>
+  </div>
+
+  <div class="main">
+    <div class="top">
+      <span>☁️ SKY clouded</span>
+      <div class="pills">
+        <button type="button" class="pill on" id="bChat" onclick="setMode('chat')">💬 Chat</button>
+        <button type="button" class="pill" id="bPhoto" onclick="setMode('photo')">🖼️ Photo</button>
+        <button type="button" class="pill pro-pill" id="bPro" onclick="openPro('Select a plan (1 Month, 6 Months, or 1 Year) to pay directly:')">👑 Go Pro</button>
+      </div>
+    </div>
+    <div class="ad-strip" id="adStrip">
+      ⚡ Free Plan: 10 Questions & 2 AI Photos Daily • <a href="#" onclick="openPro('Select a plan (1 Month, 6 Months, or 1 Year) to pay directly:'); return false;" style="color:#38bdf8; text-decoration:underline;">Upgrade to PRO</a>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="pbar" id="pbar">
+      <img id="pthumb" src="" />
+      <button type="button" class="chip on" id="cAsk" onclick="setTask('ask')">❓ Ask / Thanks</button>
+      <button type="button" class="chip" id="cEdit" onclick="setTask('edit')">🎨 Edit Photo</button>
+      <button type="button" class="chip" id="cHd" onclick="setTask('hd')">✨ Enhance HD</button>
+      <button type="button" class="chip" style="background:#dc2626;" onclick="clearImg()">✕</button>
+    </div>
+    <form class="bar" onsubmit="go(event)">
+      <input type="file" id="fIn" accept="image/*" style="display:none;" onchange="pickFile(event)" />
+      <button type="button" class="tbtn" onclick="document.getElementById('fIn').click()" title="Upload Photo">📎</button>
+      <button type="button" class="tbtn" id="bMic" onclick="mic()" title="Voice">🎤</button>
+      <input type="text" id="inp" placeholder="Ask anything or upload photo with 📎..." autocomplete="off" />
+      <button type="submit" class="send">Send</button>
+    </form>
+  </div>
+
+  <script>
+    var VIP_PLANS = { 'SKY1M49': 30, 'SKY6M249': 180, 'SKY1Y449': 365 };
+    var MAX_FREE_CHATS = 10;
+    var MAX_FREE_PHOTOS = 2;
+    var selAmt = 49, selLabel = '1 Month';
+    var all = [];
+    try { all = JSON.parse(localStorage.getItem('sky_pro_v3') || '[]'); } catch (e) {}
+    var cur = null, mode = 'chat', imgData = null, task = 'ask';
+
+    function getUpiUri() {
+      return 'upi:' + '//pay?pa=sunnykumary585@okaxis&pn=SKY%20clouded&am=' + selAmt + '&cu=INR';
+    }
+
+    function refreshPayDetails() {
+      var qrHost = ['api', 'qrserver', 'com'].join('.');
+      document.getElementById('upiQrImg').src = ['https:', '', qrHost, 'v1', 'create-qr-code'].join('/') + '?size=180x180&data=' + encodeURIComponent(getUpiUri());
+      document.getElementById('directPayBtn').textContent = '📱 Pay ₹' + selAmt + ' via UPI App';
+      var msg = 'Hi SKY clouded, maine ' + selLabel + ' plan (Rs.' + selAmt + ') pay kar diya hai. Mera VIP code bhejiye.';
+      document.getElementById('waPayLink').href = ['https:', '', 'wa.me', '919118916746'].join('/') + '?text=' + encodeURIComponent(msg);
+    }
+
+    function pickPlan(amt, label) {
+      selAmt = amt; selLabel = label;
+      document.getElementById('pl1').className = 'plan-card' + (amt === 49 ? ' active' : '');
+      document.getElementById('pl6').className = 'plan-card' + (amt === 249 ? ' active' : '');
+      document.getElementById('pl12').className = 'plan-card' + (amt === 449 ? ' active' : '');
+      refreshPayDetails();
+    }
+
+    function openUpiApp() {
+      window.location.href = getUpiUri();
+    }
+
+    function showAfterPay() {
+      document.getElementById('payBox1').style.display = 'none';
+      document.getElementById('afterPayBox').style.display = 'block';
+    }
+
+    function openPro(msg) {
+      if (msg) document.getElementById('proReason').textContent = msg;
+      refreshPayDetails();
+      document.getElementById('payBox1').style.display = 'block';
+      document.getElementById('afterPayBox').style.display = 'none';
+      document.getElementById('proModal').style.display = 'flex';
+    }
+
+    function closePro() { document.getElementById('proModal').style.display = 'none'; }
+    function isPro() { return Date.now() < Number(localStorage.getItem('sky_pro_exp') || 0); }
+    function getUsage() {
+      var today = new Date().toDateString();
+      var u = {};
+      try { u = JSON.parse(localStorage.getItem('sky_daily_quota') || '{}'); } catch (e) {}
+      if (u.date !== today) u = { date: today, chats: 0, photos: 0 };
+      return u;
+    }
+    function saveUsage(u) { localStorage.setItem('sky_daily_quota', JSON.stringify(u)); updateQuotaUI(); }
+    function updateQuotaUI() {
+      var qBox = document.getElementById('quotaBox');
+      var ad = document.getElementById('adStrip');
+      var pBtn = document.getElementById('bPro');
+      if (isPro()) {
+        var expDate = new Date(Number(localStorage.getItem('sky_pro_exp'))).toLocaleDateString();
+        qBox.innerHTML = '👑 <b>PRO Active</b><br>Valid till: <b>' + expDate + '</b><br>Unlimited Questions & Photos';
+        ad.style.display = 'none';
+        pBtn.textContent = '👑 PRO Active';
+      } else {
+        var u = getUsage();
+        qBox.innerHTML = '🆓 <b>Free Plan Today:</b><br>💬 Questions left: <b>' + Math.max(0, MAX_FREE_CHATS - u.chats) + '/10</b><br>🖼️ Photos left: <b>' + Math.max(0, MAX_FREE_PHOTOS - u.photos) + '/2</b>';
+      }
+    }
+
+    function unlockPro() {
+      var code = document.getElementById('proCodeIn').value.trim().toUpperCase();
+      var days = VIP_PLANS[code];
+      if (days) {
+        localStorage.setItem('sky_pro_exp', String(Date.now() + days * 24 * 60 * 60 * 1000));
+        closePro(); updateQuotaUI();
+        alert('🎉 Mubarak ho! SKY clouded PRO ' + days + ' din ke liye unlock ho gaya hai!');
+      } else {
+        alert('❌ Galat VIP Code! Pehle payment karke WhatsApp par screenshot bhejein.');
+      }
+    }
+
+    function clean(t) { return t.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').replace(/^---+\s*$/gm, '').trim(); }
+    function setMode(m) {
+      mode = m;
+      document.getElementById('bChat').className = 'pill' + (m === 'chat' ? ' on' : '');
+      document.getElementById('bPhoto').className = 'pill' + (m === 'photo' ? ' on' : '');
+    }
+    function setTask(k) {
+      task = k;
+      document.getElementById('cAsk').className = 'chip' + (k === 'ask' ? ' on' : '');
+      document.getElementById('cEdit').className = 'chip' + (k === 'edit' ? ' on' : '');
+      document.getElementById('cHd').className = 'chip' + (k === 'hd' ? ' on' : '');
+    }
+    function clearImg() { imgData = null; document.getElementById('fIn').value = ''; document.getElementById('pbar').className = 'pbar'; }
+    function pickFile(e) {
+      var f = e.target.files && e.target.files.item(0);
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function(ev) {
+        var im = new Image();
+        im.onload = function() {
+          var c = document.createElement('canvas');
+          var s = Math.min(1, 800 / Math.max(im.width, im.height));
+          c.width = im.width * s; c.height = im.height * s;
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          imgData = c.toDataURL('image/jpeg', 0.85);
+          document.getElementById('pthumb').src = imgData;
+          document.getElementById('pbar').className = 'pbar show';
+          setTask('ask');
+        };
+        im.src = ev.target.result;
+      };
+      r.readAsDataURL(f);
+    }
+    function mic() {
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { alert('Use Google Chrome for Mic'); return; }
+      var rec = new SR(); rec.lang = 'hi-IN';
+      var b = document.getElementById('bMic'); b.style.background = '#ef4444';
+      rec.onresult = function(e) { document.getElementById('inp').value = e.results.item(0).item(0).transcript; b.style.background = '#333'; };
+      rec.onerror = rec.onend = function() { b.style.background = '#333'; };
+      rec.start();
+    }
+    function drawHist() {
+      var h = document.getElementById('hist'); h.innerHTML = '';
+      all.forEach(function(c) {
+        var d = document.createElement('div'); d.className = 'h-item'; d.textContent = c.t;
+        d.onclick = function() { cur = c.id; var box = document.getElementById('chat'); box.innerHTML = ''; c.m.forEach(function(x) { addMsg(x.role, x.content); }); };
+        h.appendChild(d);
+      });
+    }
+    function newChat() { cur = null; clearImg(); document.getElementById('chat').innerHTML = ''; }
+    function addMsg(role, text, imgUrl, cropBottom) {
+      var box = document.getElementById('chat');
+      var d = document.createElement('div');
+      d.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
+      if (imgUrl) {
+        var dl = document.createElement('a');
+        dl.href = imgUrl; dl.download = 'sky-clouded-' + Date.now() + '.jpg'; dl.textContent = '⬇️ Download Photo';
+        dl.style.cssText = 'display:inline-block;margin-top:8px;padding:6px 14px;background:#10a37f;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:bold;';
+        var im = new Image();
+        im.onload = function() {
+          if (cropBottom) {
+            var c = document.createElement('canvas'); var h = Math.floor(im.height * 0.93);
+            c.width = im.width; c.height = h;
+            c.getContext('2d').drawImage(im, 0, 0, im.width, h, 0, 0, im.width, h);
+            im.src = c.toDataURL('image/jpeg', 0.95); dl.href = im.src; cropBottom = false;
+          }
+          box.scrollTop = box.scrollHeight;
+        };
+        im.src = imgUrl;
+        if (text) d.textContent = text;
+        d.appendChild(im);
+        if (role === 'assistant') d.appendChild(dl);
+      } else {
+        d.textContent = role === 'assistant' ? clean(text) : text;
+      }
+      box.appendChild(d); box.scrollTop = box.scrollHeight;
+      return d;
+    }
+    async function go(e) {
+      e.preventDefault();
+      var inp = document.getElementById('inp'); var txt = inp.value.trim();
+      var upImg = imgData, upTask = task;
+      if (!txt && !upImg) return;
+      var isPhotoAction = (!upImg && mode === 'photo') || (upImg && upTask === 'edit');
+      if (!isPro()) {
+        var u = getUsage();
+        if (isPhotoAction) {
+          if (u.photos >= MAX_FREE_PHOTOS) { openPro('Aapki aaj ki 2 Free AI Photos ki limit poori ho gayi hai! Unlimited photos ke liye plan chunein:'); return; }
+          u.photos += 1; saveUsage(u);
+        } else {
+          if (u.chats >= MAX_FREE_CHATS) { openPro('Aapki aaj ki 10 Free AI Sawalon ki limit poori ho gayi hai! Unlimited chat ke liye plan chunein:'); return; }
+          u.chats += 1; saveUsage(u);
+        }
+      }
+      if (!txt) txt = upTask === 'hd' ? 'Enhance HD' : (upTask === 'edit' ? 'Edit photo' : 'Describe this photo');
+      inp.value = ''; clearImg();
+      if (!cur) { cur = Date.now(); all.unshift({ id: cur, t: txt.slice(0, 26), m: [] }); }
+      var c = all.find(function(x) { return x.id === cur; });
+      c.m.push({ role: 'user', content: txt });
+      localStorage.setItem('sky_pro_v3', JSON.stringify(all));
+      drawHist(); addMsg('user', txt, upImg, false);
+      if (upImg && upTask === 'hd') {
+        var im = new Image();
+        im.onload = function() {
+          var c2 = document.createElement('canvas'); c2.width = im.width * 1.4; c2.height = im.height * 1.4;
+          var ctx = c2.getContext('2d'); ctx.filter = 'contrast(1.16) saturate(1.2) brightness(1.06)';
+          ctx.drawImage(im, 0, 0, c2.width, c2.height);
+          addMsg('assistant', '✨ HD Enhanced:', c2.toDataURL('image/jpeg', 0.96), false);
+        };
+        im.src = upImg; return;
+      }
+      var wait = addMsg('assistant', 'Thinking...');
+      try {
+        var url = (upImg && upTask === 'edit') ? '/api/edit-photo' : ((!upImg && mode === 'photo') ? '/api/image' : '/api/chat');
+        var body = url === '/api/chat' ? { messages: c.m, image: upImg } : { prompt: txt, image: upImg };
+        var r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        var d = await r.json();
+        wait.remove();
+        if (d.imageUrl) { addMsg('assistant', 'Photo Ready:', d.imageUrl, true); }
+        else {
+          var ans = d.answer || ('Error: ' + (d.error || 'Failed'));
+          wait = addMsg('assistant', ans);
+          if (d.answer) { c.m.push({ role: 'assistant', content: d.answer }); localStorage.setItem('sky_pro_v3', JSON.stringify(all)); }
+        }
+      } catch (err) { wait.textContent = 'Error: ' + err.message; }
+    }
+    drawHist(); updateQuotaUI();
+  </script>
+</body>
+</html>

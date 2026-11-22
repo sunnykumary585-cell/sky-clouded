@@ -1,0 +1,17 @@
+{
+  "name": "SKY clouded",
+  "short_name": "SKY clouded",
+  "description": "AI Chat, Photo Generator, Photo Editor & Voice Assistant",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#212121",
+  "theme_color": "#10a37f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
