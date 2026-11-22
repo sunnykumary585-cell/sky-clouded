@@ -176,11 +176,11 @@
     function getUsage() {
       var today = new Date().toDateString();
       var u = {};
-      try { u = JSON.parse(localStorage.getItem('sky_daily_quota') || '{}'); } catch (e) {}
+      try { u = JSON.parse(localStorage.getItem('sky_quota_v2') || '{}'); } catch (e) {}
       if (u.date !== today) u = { date: today, chats: 0, photos: 0 };
       return u;
     }
-    function saveUsage(u) { localStorage.setItem('sky_daily_quota', JSON.stringify(u)); updateQuotaUI(); }
+    function saveUsage(u) { localStorage.setItem('sky_quota_v2', JSON.stringify(u)); updateQuotaUI(); }
     function updateQuotaUI() {
       var qBox = document.getElementById('quotaBox');
       var ad = document.getElementById('adStrip');
@@ -297,10 +297,10 @@
         var u = getUsage();
         if (isPhotoAction) {
           if (u.photos >= MAX_FREE_PHOTOS) { openPro('Aapki aaj ki 2 Free AI Photos ki limit poori ho gayi hai! Unlimited photos ke liye plan chunein:'); return; }
-          u.photos += 1; saveUsage(u);
+         
         } else {
           if (u.chats >= MAX_FREE_CHATS) { openPro('Aapki aaj ki 10 Free AI Sawalon ki limit poori ho gayi hai! Unlimited chat ke liye plan chunein:'); return; }
-          u.chats += 1; saveUsage(u);
+        
         }
       }
       if (!txt) txt = upTask === 'hd' ? 'Enhance HD' : (upTask === 'edit' ? 'Edit photo' : 'Describe this photo');
@@ -327,11 +327,17 @@
         var r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         var d = await r.json();
         wait.remove();
-        if (d.imageUrl) { addMsg('assistant', 'Photo Ready:', d.imageUrl, true); }
-        else {
+       if (d.imageUrl) {
+          if (!isPro()) { var u1 = getUsage(); u1.photos += 1; saveUsage(u1); }
+          addMsg('assistant', 'Photo Ready:', d.imageUrl, true);
+        } else {
           var ans = d.answer || ('Error: ' + (d.error || 'Failed'));
           wait = addMsg('assistant', ans);
-          if (d.answer) { c.m.push({ role: 'assistant', content: d.answer }); localStorage.setItem('sky_pro_v3', JSON.stringify(all)); }
+          if (d.answer) {
+            if (!isPro()) { var u2 = getUsage(); u2.chats += 1; saveUsage(u2); }
+            c.m.push({ role: 'assistant', content: d.answer });
+            localStorage.setItem('sky_pro_v3', JSON.stringify(all));
+          }
         }
       } catch (err) { wait.textContent = 'Error: ' + err.message; }
     }
