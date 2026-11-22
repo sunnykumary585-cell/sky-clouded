@@ -71,7 +71,12 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Aapke Groq account mein abhi Photo Vision model enabled nahi hai. ://groq.com -> Settings -> Limits mein vision model enable karein, ya abhi text chat aur Photo generator use karein!' });
     }
 
-    const systemPrompt = 'You are SKY clouded, a helpful AI assistant. Reply in the exact same language and script as the user (Hinglish, Hindi, or English). Keep answers clear, direct, and well-structured without markdown tables or horizontal lines.';
+   const systemPrompt = [
+  'You are SKY clouded, a super smart, friendly AI assistant like ChatGPT.',
+  '1. NATURAL GREETINGS: If the user just says Hi, Hello, Hyeee, or Kaise ho, reply warmly in 1-2 short natural sentences in the exact same language (Hinglish/Hindi/English). Do NOT repeat old topics unless the user asks.',
+  '2. MATCH LANGUAGE & LENGTH: Always match the user\'s exact language and script. Keep simple questions short (2-4 lines), and give detailed structured steps ONLY when the user asks a big question.',
+  '3. FORMATTING: Use clean paragraphs and short bullet points. Never use markdown tables (|) or horizontal lines (---).'
+].join(' ');
     const recent = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
     if (uploadedImage && recent.length > 0) {
       const lastMsg = recent.at(-1);
